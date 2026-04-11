@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Alarm Clock",
+        "description": "Configure your alarm clock. You can update these settings later via the integration options.",
+        "data": {
+          "name": "Name",
+          "media_player": "Media Player (audio device)",
+          "mp3_url": "MP3 File Path",
+          "workday_sensor": "Workday Sensor (optional)",
+          "holiday_calendar": "Holiday Calendar (optional)"
+        },
+        "data_description": {
+          "mp3_url": "Local path or URL to your alarm sound, e.g. /local/alarm.mp3",
+          "workday_sensor": "A binary_sensor from the Workday integration. Leave blank if not needed.",
+          "holiday_calendar": "A calendar entity for public holidays, e.g. calendar.canada_on. Leave blank if not needed."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "An Alarm Clock with this name is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alarm Clock Options",
+        "data": {
+          "media_player": "Media Player (audio device)",
+          "mp3_url": "MP3 File Path",
+          "workday_sensor": "Workday Sensor (optional)",
+          "holiday_calendar": "Holiday Calendar (optional)"
+        },
+        "data_description": {
+          "mp3_url": "Local path or URL to your alarm sound, e.g. /local/alarm.mp3",
+          "workday_sensor": "A binary_sensor from the Workday integration. Leave blank if not needed.",
+          "holiday_calendar": "A calendar entity for public holidays, e.g. calendar.canada_on. Leave blank if not needed."
+        }
+      }
+    }
+  }
+}
