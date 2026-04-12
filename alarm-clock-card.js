@@ -206,6 +206,17 @@ const STYLES = `
   .summary     { font-size: 11px; color: var(--secondary-text-color, #757575); flex: 1; text-align: right; min-width: 80px; }
   .summary strong { color: var(--primary-text-color, #212121); }
 
+  /* Master paused banner */
+  .paused-banner {
+    display: flex; flex-direction: row; align-items: center; gap: 10px;
+    padding: 8px 16px; box-sizing: border-box; width: 100%;
+    background: rgba(211,47,47,0.1);
+    border-top: 2px solid rgba(211,47,47,0.4);
+    font-size: 12px; font-weight: 700; color: #d32f2f;
+  }
+  .card-root.is-paused .day-col { opacity: 0.45; pointer-events: none; }
+  .card-root.is-paused input[type="time"] { pointer-events: none; }
+
   /* Error / info */
   .msg {
     padding: 24px 20px; text-align: center;
@@ -281,6 +292,7 @@ class AlarmClockCard extends HTMLElement {
   _s(id)             { return this._hass?.states[id]; }
   _timeEnt(day)      { return this._s(`time.${this._prefix}_${day}_time`); }
   _switchEnt(day)    { return this._s(`switch.${this._prefix}_${day}_enabled`); }
+  _masterEnable()    { return this._s(`switch.${this._prefix}_alarms_enabled`); }
   _wdOnly()          { return this._s(`switch.${this._prefix}_workday_only`); }
   _skipHolidays()    { return this._s(`switch.${this._prefix}_skip_holidays`); }
   _nextAlarm()       { return this._s(`sensor.${this._prefix}_next_alarm`); }
@@ -353,7 +365,7 @@ class AlarmClockCard extends HTMLElement {
     shadow.appendChild(style);
 
     const root = document.createElement("div");
-    root.className = "card-root";
+    root.className = "card-root" + (isPaused ? " is-paused" : "");
 
     if (!prefix) {
       // Show a helpful diagnostic — list all time entities found so user
@@ -376,12 +388,14 @@ class AlarmClockCard extends HTMLElement {
 
     this._prefix = prefix;
 
-    const nextState  = this._nextAlarm();
-    const attrs      = nextState?.attributes ?? {};
-    const nextValue  = nextState?.state ?? "—";
-    const title      = this._config?.title ?? "Alarm Clock";
-    const snoozeMins = this._config?.snooze_minutes ?? 10;
-    const isSnoozed  = !!this._snoozeEnd;
+    const nextState   = this._nextAlarm();
+    const attrs       = nextState?.attributes ?? {};
+    const nextValue   = nextState?.state ?? "—";
+    const title       = this._config?.title ?? "Alarm Clock";
+    const snoozeMins  = this._config?.snooze_minutes ?? 10;
+    const isSnoozed   = !!this._snoozeEnd;
+    const masterEnt   = this._masterEnable();
+    const isPaused    = masterEnt ? masterEnt.state === "off" : false;
 
     // ── Header ──────────────────────────────────────────────────────
     const hdr = document.createElement("div");
@@ -418,6 +432,14 @@ class AlarmClockCard extends HTMLElement {
         </div>
         <button class="snooze-cancel" id="btn-cancel-snooze">Cancel</button>`;
       root.appendChild(bar);
+    }
+
+    // ── Paused banner ────────────────────────────────────────────────
+    if (isPaused) {
+      const banner = document.createElement("div");
+      banner.className = "paused-banner";
+      banner.innerHTML = `<span style="font-size:18px">⏸️</span> All alarms paused — re-enable with the toggle below`;
+      root.appendChild(banner);
     }
 
     // ── Horizontal day columns ───────────────────────────────────────
@@ -563,6 +585,22 @@ class AlarmClockCard extends HTMLElement {
     bottom.className = "bottom-bar";
     bottom.innerHTML = `
       <div class="gates-wrap">
+        ${masterEnt ? `
+        <div class="wd-wrap">
+          <div class="wd-icon${isPaused ? "" : " on"}" style="${isPaused ? "background:#d32f2f" : "background:var(--success-color,#00a86b)"}">⏰</div>
+          <div>
+            <div class="wd-title">Alarms ${isPaused ? "Paused" : "Enabled"}</div>
+            <div class="wd-desc${isPaused ? "" : " on"}" style="${isPaused ? "color:#d32f2f" : ""}">${isPaused ? "All alarms suppressed" : "Firing normally"}</div>
+          </div>
+          <label class="toggle" style="margin-left:4px">
+            <input type="checkbox"
+                   data-entity="${masterEnt.entity_id}"
+                   data-state="${masterEnt.state}"
+                   ${!isPaused ? "checked" : ""}>
+            <div class="t-track"></div>
+            <div class="t-thumb"></div>
+          </label>
+        </div>` : ""}
         <div class="wd-wrap">
           <div class="wd-icon${isWdOn ? " on" : ""}">💼</div>
           <div>

@@ -33,6 +33,8 @@ class AlarmClockCoordinator:
         self.alarm_times: dict[str, dt_time | None] = {day: dt_time(7, 0) for day in DAYS}
         # Per-day enabled state
         self.alarm_enabled: dict[str, bool] = {day: False for day in DAYS}
+        # Master enable (False = all alarms paused without touching per-day settings)
+        self.master_enabled: bool = True
         # Workday-only gate
         self.workday_only: bool = False
         # Public holiday gate
@@ -101,6 +103,12 @@ class AlarmClockCoordinator:
         local_now = dt_util.as_local(now)
         current_time = local_now.time().replace(second=0, microsecond=0)
         current_day = DAYS[local_now.weekday()]  # Mon=0 … Sun=6
+
+        # ---- Master enable gate ------------------------------------------
+        if not self.master_enabled:
+            _LOGGER.debug("Alarm clock: master enable is off – all alarms paused")
+            self._notify_listeners()
+            return
 
         # ---- Workday gate ------------------------------------------------
         if self.workday_only and self.workday_sensor:

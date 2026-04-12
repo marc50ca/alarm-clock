@@ -34,6 +34,7 @@ async def async_setup_entry(
         AlarmEnabledSwitch(coordinator, entry, day, DAY_NAMES[idx])
         for idx, day in enumerate(DAYS)
     ]
+    entities.append(MasterEnableSwitch(coordinator, entry))
     entities.append(WorkdayOnlySwitch(coordinator, entry))
     entities.append(SkipHolidaysSwitch(coordinator, entry))
 
@@ -101,6 +102,67 @@ class AlarmEnabledSwitch(SwitchEntity, RestoreEntity):
             "day": self._day,
             "alarm_time": alarm_time.strftime("%H:%M") if alarm_time else None,
         }
+
+    @property
+    def device_info(self) -> dict:
+        return {
+            "identifiers": {(DOMAIN, self._entry.entry_id)},
+            "name": self._entry.title,
+            "manufacturer": "Custom Integration",
+            "model": "Alarm Clock",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Master enable switch
+# ---------------------------------------------------------------------------
+
+class MasterEnableSwitch(SwitchEntity, RestoreEntity):
+    """When ON, alarms can fire normally. When OFF, all alarms are paused
+    without touching any per-day settings, times, or other gates."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        coordinator: AlarmClockCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        self._coordinator = coordinator
+        self._entry = entry
+
+        self._attr_name = f"{entry.title} Alarms Enabled"
+        self._attr_unique_id = f"{entry.entry_id}_master_enabled"
+        self._attr_is_on = True  # Default: alarms active
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if last_state := await self.async_get_last_state():
+            self._attr_is_on = last_state.state != "off"
+        self._coordinator.master_enabled = self._attr_is_on
+        self._coordinator.add_listener(self._async_refresh)
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._coordinator.remove_listener(self._async_refresh)
+
+    def _async_refresh(self) -> None:
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        self._attr_is_on = True
+        self._coordinator.master_enabled = True
+        self._coordinator._notify_listeners()
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        self._attr_is_on = False
+        self._coordinator.master_enabled = False
+        self._coordinator._notify_listeners()
+        self.async_write_ha_state()
+
+    @property
+    def icon(self) -> str:
+        return "mdi:alarm" if self._attr_is_on else "mdi:alarm-off"
 
     @property
     def device_info(self) -> dict:
